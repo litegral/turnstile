@@ -43,6 +43,7 @@ func TestOutOfOrderAvailabilityKeepsNewestVersion(t *testing.T) {
 	if quantity != 2 || version != 12 {
 		t.Fatalf("quantity = %d, version = %d; want 2, 12", quantity, version)
 	}
+	t.Logf("availability evidence: delivered_versions=12,11 final_quantity=%d final_version=%d", quantity, version)
 }
 
 func TestConcurrentAvailabilityKeepsNewestVersion(t *testing.T) {

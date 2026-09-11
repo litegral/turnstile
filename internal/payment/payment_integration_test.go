@@ -69,6 +69,7 @@ func TestConcurrentDuplicateWebhookCreatesOnePayment(t *testing.T) {
 	if events != 1 || payments != 1 {
 		t.Fatalf("webhook events = %d, payments = %d; want 1, 1", events, payments)
 	}
+	t.Logf("duplicate webhook evidence: concurrent_requests=%d webhook_events=%d transaction_payments=%d", attempts, events, payments)
 }
 
 func TestWebhookIdentifierConflict(t *testing.T) {

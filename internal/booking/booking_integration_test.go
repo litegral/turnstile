@@ -70,6 +70,7 @@ func TestConcurrentBookingDoesNotOversell(t *testing.T) {
 	if available != 0 || transactions != 1 || events != 2 {
 		t.Fatalf("available = %d, transactions = %d, events = %d; want 0, 1, 2", available, transactions, events)
 	}
+	t.Logf("race evidence: buyers=%d succeeded=%d sold_out=%d available=%d transactions=%d outbox_events=%d", buyers, succeeded, soldOut, available, transactions, events)
 }
 
 func TestConcurrentIdempotentBooking(t *testing.T) {

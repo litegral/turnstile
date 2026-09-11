@@ -114,6 +114,8 @@ func TestBookingEventuallyReachesAccounting(t *testing.T) {
 	if availabilityStatus != "PENDING" {
 		t.Fatalf("availability status = %s, want PENDING", availabilityStatus)
 	}
+	t.Logf("accounting evidence: http_requests=%d failed_requests=%d successful_requests=1 recorded_attempts=%d status=%s stable_idempotency_key=%t committed_transactions=%d",
+		len(keys), len(keys)-1, attempts, status, keys[0] == keys[1] && keys[1] == keys[2], transactions)
 }
 
 func accountingIntegrationPool(t *testing.T) *pgxpool.Pool {

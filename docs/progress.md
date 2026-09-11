@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] Capture Phase 8 reproducible validation evidence and report screenshots
+- [ ] Complete Phase 9 README, diagrams, and final report screenshots
 
 ## Completed
 
@@ -50,10 +50,14 @@
 - [x] Destination projection guarded by atomic newer-version-only PostgreSQL upsert
 - [x] Dedicated availability outbox worker with stale and duplicate delivery no-ops
 - [x] Out-of-order and concurrent synchronization acceptance tests
+- [x] Phase 8 reproducible validation evidence
+- [x] One-command PostgreSQL acceptance validation with Go race detector
+- [x] Numeric evidence for race, accounting retry, duplicate webhook, and stale availability scenarios
+- [x] Fresh 10,001-request k6 run reconciled against committed PostgreSQL state in 40.920 seconds
 
 ## Remaining
 
-- [ ] Phases 8-9 from `product_roadmap.md`
+- [ ] Phase 9 from `product_roadmap.md`
 
 ## Notes
 
@@ -62,7 +66,7 @@
 - Booking correctness uses `UPDATE ... WHERE available_quantity >= quantity RETURNING`; PostgreSQL row locking serializes competing updates.
 - Idempotency keys are claimed in PostgreSQL before inventory changes; concurrent matching retries replay one committed transaction.
 - Booking, inventory change, and both outbox events commit atomically. External calls remain outside the transaction.
-- Source-of-truth assessment is `docs/technical_assessment.pdf`.
+- Source-of-truth assessment is `docs/test_assessment.md`.
 - Outbox delivery is at-least-once; handlers must use immutable outbox event IDs as idempotency keys.
 - Accounting and availability workers independently claim only their destination event types.
 - Availability destination applies `EXCLUDED.version > stored.version` atomically; stale and duplicate deliveries complete as successful no-ops.
@@ -74,4 +78,5 @@
 - Reused provider event or payment identifiers with different transaction data return conflict instead of silently accepting inconsistent state.
 - Migration metadata uses `public.schema_migrations` to prevent search-path changes from replaying migrations.
 - HPA permits 2-5 API replicas; 10 connections per replica caps application database connections at 50.
-- Phase 3 load validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Reconciliation result: `0|10001|10001|10001|10001|20002|10001|10001|t`.
+- Phase 8 validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Fresh result: 10,001 created responses in 40.920 seconds; reconciliation `0|10001|10001|10001|10001|20002|10001|10001|t`.
+- `validate.ps1` runs isolated PostgreSQL acceptance tests sequentially because integration packages truncate shared test tables.
