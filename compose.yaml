@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-turnstile}
+      POSTGRES_USER: ${POSTGRES_USER:-turnstile}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-turnstile}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  migrate:
+    build: .
+    entrypoint: ["migrate"]
+    environment: &app-environment
+      DATABASE_URL: host=postgres port=5432 user=${POSTGRES_USER:-turnstile} password=${POSTGRES_PASSWORD:-turnstile} dbname=${POSTGRES_DB:-turnstile} sslmode=disable
+      HTTP_ADDR: ${HTTP_ADDR:-}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-}
+      DB_MIN_CONNECTIONS: ${DB_MIN_CONNECTIONS:-}
+      HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-}
+      HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-}
+      HTTP_IDLE_TIMEOUT: ${HTTP_IDLE_TIMEOUT:-}
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-}
+      DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-}
+      DB_HEALTH_TIMEOUT: ${DB_HEALTH_TIMEOUT:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    environment: *app-environment
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    stop_grace_period: 15s
+
+volumes:
+  postgres-data:
