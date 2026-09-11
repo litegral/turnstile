@@ -67,16 +67,16 @@ Suggested format:
 
 # Phase 1 - Foundation
 
-* [ ] Initialize Go project
-* [ ] PostgreSQL + `pgxpool`
-* [ ] Database migrations
-* [ ] Configuration via environment variables
-* [ ] Structured logging
-* [ ] Dockerfile
-* [ ] Docker Compose
-* [ ] `/health`
-* [ ] `/ready`
-* [ ] Graceful shutdown
+* [x] Initialize Go project
+* [x] PostgreSQL + `pgxpool`
+* [x] Database migrations
+* [x] Configuration via environment variables
+* [x] Structured logging
+* [x] Dockerfile
+* [x] Docker Compose
+* [x] `/health`
+* [x] `/ready`
+* [x] Graceful shutdown
 
 ---
 
