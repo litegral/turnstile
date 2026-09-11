@@ -214,13 +214,13 @@ transaction_id
 
 Implement:
 
-* [ ] webhook endpoint
-* [ ] `webhook_events`
-* [ ] `transaction_payments`
-* [ ] `UNIQUE(provider, event_id)`
-* [ ] `UNIQUE(provider, payment_id)`
-* [ ] idempotent processing
-* [ ] duplicate requests return successful `2xx`
+* [x] webhook endpoint
+* [x] `webhook_events`
+* [x] `transaction_payments`
+* [x] `UNIQUE(provider, event_id)`
+* [x] `UNIQUE(provider, payment_id)`
+* [x] idempotent processing
+* [x] duplicate requests return successful `2xx`
 
 Acceptance test:
 
@@ -347,7 +347,7 @@ Turnstile is ready for submission when:
 * [ ] retry uses exponential backoff + jitter;
 * [ ] worker crash recovery exists;
 * [ ] accounting integration uses idempotency and circuit breaker;
-* [ ] duplicate webhooks cannot duplicate payments;
+* [x] duplicate webhooks cannot duplicate payments;
 * [ ] availability uses monotonic versioning;
 * [ ] stale updates cannot overwrite newer state;
 * [ ] concurrency scenarios are integration tested;

@@ -31,7 +31,7 @@ func TestHealthEndpoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := NewServer(config.HTTP{}, time.Second, tt.db, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			server := NewServer(config.HTTP{}, time.Second, tt.db, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			request := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			response := httptest.NewRecorder()
 			server.Handler.ServeHTTP(response, request)

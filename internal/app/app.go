@@ -13,6 +13,7 @@ import (
 	"github.com/litegral/turnstile/internal/database"
 	"github.com/litegral/turnstile/internal/httpapi"
 	"github.com/litegral/turnstile/internal/outbox"
+	"github.com/litegral/turnstile/internal/payment"
 )
 
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
@@ -59,7 +60,8 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}()
 
 	bookings := booking.NewService(pool)
-	server := httpapi.NewServer(cfg.HTTP, cfg.Database.HealthTimeout, pool, bookings, logger)
+	payments := payment.NewService(pool)
+	server := httpapi.NewServer(cfg.HTTP, cfg.Database.HealthTimeout, pool, bookings, payments, logger)
 	serveErr := make(chan error, 1)
 	go func() {
 		logger.Info("server listening", "address", cfg.HTTP.Address)

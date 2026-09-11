@@ -24,6 +24,7 @@ type HTTP struct {
 	WriteTimeout    time.Duration
 	IdleTimeout     time.Duration
 	BookingTimeout  time.Duration
+	WebhookTimeout  time.Duration
 	ShutdownTimeout time.Duration
 }
 
@@ -73,6 +74,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	bookingTimeout, err := duration("BOOKING_TIMEOUT", 8*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	webhookTimeout, err := duration("WEBHOOK_TIMEOUT", 8*time.Second)
 	if err != nil {
 		return Config{}, err
 	}
@@ -131,6 +136,7 @@ func Load() (Config, error) {
 			WriteTimeout:    writeTimeout,
 			IdleTimeout:     idleTimeout,
 			BookingTimeout:  bookingTimeout,
+			WebhookTimeout:  webhookTimeout,
 			ShutdownTimeout: shutdownTimeout,
 		},
 		Database: Database{
@@ -162,8 +168,8 @@ func Load() (Config, error) {
 	if cfg.Database.MaxConnections < 1 || cfg.Database.MinConnections < 0 || cfg.Database.MinConnections > cfg.Database.MaxConnections {
 		return Config{}, errors.New("database connection limits are invalid")
 	}
-	if cfg.HTTP.BookingTimeout >= cfg.HTTP.WriteTimeout {
-		return Config{}, errors.New("BOOKING_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
+	if cfg.HTTP.BookingTimeout >= cfg.HTTP.WriteTimeout || cfg.HTTP.WebhookTimeout >= cfg.HTTP.WriteTimeout {
+		return Config{}, errors.New("BOOKING_TIMEOUT and WEBHOOK_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
 	}
 	if cfg.Accounting.Timeout >= cfg.Outbox.DeliveryTimeout || cfg.Outbox.DeliveryTimeout >= cfg.Outbox.LeaseDuration {
 		return Config{}, errors.New("ACCOUNTING_TIMEOUT must be shorter than OUTBOX_DELIVERY_TIMEOUT, which must be shorter than OUTBOX_LEASE_DURATION")

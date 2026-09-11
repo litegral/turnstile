@@ -13,7 +13,7 @@ The technical assessment PDF in this repository is the **primary source of truth
 Expected filename:
 
 ```text
-technical_assessment.pdf
+test_assessment.md
 ```
 
 If any documentation or implementation conflicts with the assessment, the assessment takes precedence.

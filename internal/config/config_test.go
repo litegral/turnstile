@@ -18,6 +18,7 @@ func TestLoad(t *testing.T) {
 		{name: "invalid duration", key: "HTTP_READ_TIMEOUT", value: "soon", wantErr: true},
 		{name: "non-positive duration", key: "DB_HEALTH_TIMEOUT", value: "0s", wantErr: true},
 		{name: "booking timeout exceeds write timeout", key: "BOOKING_TIMEOUT", value: "10s", wantErr: true},
+		{name: "webhook timeout exceeds write timeout", key: "WEBHOOK_TIMEOUT", value: "10s", wantErr: true},
 		{name: "invalid log level", key: "LOG_LEVEL", value: "verbose", wantErr: true},
 		{name: "accounting timeout exceeds delivery", key: "ACCOUNTING_TIMEOUT", value: "6s", wantErr: true},
 		{name: "zero outbox concurrency", key: "OUTBOX_CONCURRENCY", value: "0", wantErr: true},

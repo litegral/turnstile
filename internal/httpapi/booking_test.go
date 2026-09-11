@@ -68,7 +68,7 @@ func TestBookTickets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-			server := NewServer(config.HTTP{}, time.Second, pinger{}, tt.service, logger)
+			server := NewServer(config.HTTP{}, time.Second, pinger{}, tt.service, nil, logger)
 			request := httptest.NewRequest(http.MethodPost, "/bookings", strings.NewReader(tt.body))
 			request.Header.Set("Idempotency-Key", tt.key)
 			response := httptest.NewRecorder()
@@ -91,7 +91,7 @@ func TestBookTickets(t *testing.T) {
 
 func TestBookTicketsTimesOut(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	server := NewServer(config.HTTP{BookingTimeout: time.Millisecond}, time.Second, pinger{}, waitingBookingStub{}, logger)
+	server := NewServer(config.HTTP{BookingTimeout: time.Millisecond}, time.Second, pinger{}, waitingBookingStub{}, nil, logger)
 	request := httptest.NewRequest(http.MethodPost, "/bookings", strings.NewReader(`{"inventory_id":1,"customer_id":"customer-1","quantity":1}`))
 	request.Header.Set("Idempotency-Key", "request-1")
 	response := httptest.NewRecorder()

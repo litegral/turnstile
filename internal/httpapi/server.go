@@ -14,7 +14,7 @@ type databasePinger interface {
 	Ping(context.Context) error
 }
 
-func NewServer(cfg config.HTTP, healthTimeout time.Duration, db databasePinger, bookings bookingService, logger *slog.Logger) *http.Server {
+func NewServer(cfg config.HTTP, healthTimeout time.Duration, db databasePinger, bookings bookingService, payments paymentService, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		respond(w, http.StatusOK, "ok")
@@ -29,6 +29,7 @@ func NewServer(cfg config.HTTP, healthTimeout time.Duration, db databasePinger, 
 		respond(w, http.StatusOK, "ready")
 	})
 	mux.HandleFunc("POST /bookings", bookTickets(bookings, cfg.BookingTimeout, logger))
+	mux.HandleFunc("POST /webhooks/{provider}/payments", processPaymentWebhook(payments, cfg.WebhookTimeout, logger))
 
 	return &http.Server{
 		Addr:         cfg.Address,

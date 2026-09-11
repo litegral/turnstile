@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] Wire availability outbox events to destination handler in Phase 7
+- [ ] Implement Phase 7 availability synchronization and destination handler
 
 ## Completed
 
@@ -39,10 +39,16 @@
 - [x] Runnable Docker Compose mock accounting service with configurable temporary failures
 - [x] PostgreSQL end-to-end accounting test covering booking, durable retries, stable idempotency, and completion
 - [x] Temporary accounting failures retry indefinitely with capped backoff; circuit-open postponements do not consume attempts
+- [x] Phase 6 duplicate payment webhook handling
+- [x] `POST /webhooks/{provider}/payments` with strict JSON validation and request deadline
+- [x] Atomic webhook receipt and transaction payment persistence
+- [x] PostgreSQL uniqueness on `(provider, event_id)` and `(provider, payment_id)`
+- [x] Successful `2xx` replay for exact duplicates and conflict rejection for reused identifiers
+- [x] Concurrent duplicate webhook acceptance test proving one receipt and one payment
 
 ## Remaining
 
-- [ ] Phases 6-9 from `product_roadmap.md`
+- [ ] Phases 7-9 from `product_roadmap.md`
 
 ## Notes
 
@@ -58,6 +64,8 @@
 - Terminal failures remain queryable with attempt count and last error for operational visibility.
 - Accounting retries network errors, HTTP 408/425/429, and 5xx indefinitely with bounded backoff; other non-2xx responses become visible terminal failures.
 - Circuit breaker limits calls during accounting outages; open-circuit postponements do not consume attempts, and PostgreSQL outbox remains sole delivery-state owner.
+- Payment webhooks rely on PostgreSQL unique constraints, not process-local locks; exact duplicates replay successfully across concurrent API replicas.
+- Reused provider event or payment identifiers with different transaction data return conflict instead of silently accepting inconsistent state.
 - Migration metadata uses `public.schema_migrations` to prevent search-path changes from replaying migrations.
 - HPA permits 2-5 API replicas; 10 connections per replica caps application database connections at 50.
 - Phase 3 load validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Reconciliation result: `0|10001|10001|10001|10001|20002|10001|10001|t`.
