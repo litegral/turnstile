@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/litegral/turnstile/internal/accounting"
 	"github.com/litegral/turnstile/internal/booking"
 	"github.com/litegral/turnstile/internal/config"
 	"github.com/litegral/turnstile/internal/database"
 	"github.com/litegral/turnstile/internal/httpapi"
+	"github.com/litegral/turnstile/internal/outbox"
 )
 
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
@@ -19,6 +21,42 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	defer pool.Close()
+
+	accountingClient, err := accounting.NewClient(accounting.Config{
+		URL:              cfg.Accounting.URL,
+		Timeout:          cfg.Accounting.Timeout,
+		FailureThreshold: cfg.Accounting.FailureThreshold,
+		OpenDuration:     cfg.Accounting.CircuitOpen,
+	})
+	if err != nil {
+		return fmt.Errorf("create accounting client: %w", err)
+	}
+	worker, err := outbox.NewWorker(
+		outbox.NewStoreForTypes(pool, accounting.EventType),
+		accountingClient,
+		outbox.Config{
+			Concurrency:       cfg.Outbox.Concurrency,
+			PollInterval:      cfg.Outbox.PollInterval,
+			LeaseDuration:     cfg.Outbox.LeaseDuration,
+			DeliveryTimeout:   cfg.Outbox.DeliveryTimeout,
+			BaseRetryDelay:    cfg.Outbox.BaseRetryDelay,
+			MaximumRetryDelay: cfg.Outbox.MaximumRetryDelay,
+		},
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("create accounting outbox worker: %w", err)
+	}
+	workerCtx, stopWorker := context.WithCancel(ctx)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		worker.Run(workerCtx)
+	}()
+	defer func() {
+		stopWorker()
+		<-workerDone
+	}()
 
 	bookings := booking.NewService(pool)
 	server := httpapi.NewServer(cfg.HTTP, cfg.Database.HealthTimeout, pool, bookings, logger)

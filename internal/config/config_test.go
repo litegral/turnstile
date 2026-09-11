@@ -4,6 +4,7 @@ import "testing"
 
 func TestLoad(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost/turnstile")
+	t.Setenv("ACCOUNTING_URL", "http://accounting.test/transaction")
 
 	tests := []struct {
 		name    string
@@ -18,6 +19,8 @@ func TestLoad(t *testing.T) {
 		{name: "non-positive duration", key: "DB_HEALTH_TIMEOUT", value: "0s", wantErr: true},
 		{name: "booking timeout exceeds write timeout", key: "BOOKING_TIMEOUT", value: "10s", wantErr: true},
 		{name: "invalid log level", key: "LOG_LEVEL", value: "verbose", wantErr: true},
+		{name: "accounting timeout exceeds delivery", key: "ACCOUNTING_TIMEOUT", value: "6s", wantErr: true},
+		{name: "zero outbox concurrency", key: "OUTBOX_CONCURRENCY", value: "0", wantErr: true},
 	}
 
 	for _, tt := range tests {

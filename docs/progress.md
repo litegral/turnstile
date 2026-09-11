@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] Wire outbox worker to real accounting and availability handlers in Phases 5 and 7
+- [ ] Wire availability outbox events to destination handler in Phase 7
 
 ## Completed
 
@@ -33,11 +33,16 @@
 - [x] Bounded exponential backoff with cryptographic jitter
 - [x] Persistent attempt count, last error, and terminal `FAILED` visibility
 - [x] Concurrent claim, retry, stale claim, completion, and cancellation tests
+- [x] Phase 5 accounting HTTP integration with explicit timeout and stable event-ID idempotency key
+- [x] Temporary-failure retry through durable outbox and concurrency-safe circuit breaker
+- [x] Accounting worker activation scoped to accounting event types
+- [x] Runnable Docker Compose mock accounting service with configurable temporary failures
+- [x] PostgreSQL end-to-end accounting test covering booking, durable retries, stable idempotency, and completion
+- [x] Temporary accounting failures retry indefinitely with capped backoff; circuit-open postponements do not consume attempts
 
 ## Remaining
 
-- [ ] Phase 4 production activation after destination handlers exist
-- [ ] Phases 5-9 from `product_roadmap.md`
+- [ ] Phases 6-9 from `product_roadmap.md`
 
 ## Notes
 
@@ -48,9 +53,11 @@
 - Booking, inventory change, and both outbox events commit atomically. External calls remain outside the transaction.
 - Source-of-truth assessment is `docs/technical_assessment.pdf`.
 - Outbox delivery is at-least-once; handlers must use immutable outbox event IDs as idempotency keys.
-- Worker engine remains unwired until real destination handlers exist; placeholder handlers would falsely complete undelivered events.
+- Accounting worker is active; availability events remain pending until Phase 7 provides their real destination handler.
 - Expired leases recover crashed work; claim tokens prevent stale workers from completing or failing reclaimed events.
 - Terminal failures remain queryable with attempt count and last error for operational visibility.
+- Accounting retries network errors, HTTP 408/425/429, and 5xx indefinitely with bounded backoff; other non-2xx responses become visible terminal failures.
+- Circuit breaker limits calls during accounting outages; open-circuit postponements do not consume attempts, and PostgreSQL outbox remains sole delivery-state owner.
 - Migration metadata uses `public.schema_migrations` to prevent search-path changes from replaying migrations.
 - HPA permits 2-5 API replicas; 10 connections per replica caps application database connections at 50.
 - Phase 3 load validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Reconciliation result: `0|10001|10001|10001|10001|20002|10001|10001|t`.

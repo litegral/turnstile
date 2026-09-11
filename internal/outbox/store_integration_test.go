@@ -39,7 +39,7 @@ func TestStoreConcurrentClaimAndCrashRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updated, err := store.Fail(ctx, claimed[0], errors.New("destination unavailable"), time.Second, 1)
+	updated, err := store.Fail(ctx, claimed[0], errors.New("invalid destination request"), time.Second, FailurePermanent)
 	if err != nil || !updated {
 		t.Fatalf("Fail() = %v, %v; want true, nil", updated, err)
 	}
@@ -48,7 +48,7 @@ func TestStoreConcurrentClaimAndCrashRecovery(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT status, attempt_count, last_error FROM turnstile.outbox_events WHERE id = $1`, secondID).Scan(&status, &attempts, &lastError); err != nil {
 		t.Fatal(err)
 	}
-	if status != "FAILED" || attempts != 1 || lastError != "destination unavailable" {
+	if status != "FAILED" || attempts != 1 || lastError != "invalid destination request" {
 		t.Fatalf("failed event = %q, %d, %q", status, attempts, lastError)
 	}
 

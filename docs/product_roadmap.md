@@ -172,11 +172,11 @@ No successful booking may lose its outgoing event.
 
 # Phase 5 - Accounting Integration
 
-* [ ] accounting HTTP client
-* [ ] explicit timeout
-* [ ] stable outgoing idempotency key
-* [ ] retry temporary failures
-* [ ] circuit breaker
+* [x] accounting HTTP client
+* [x] explicit timeout
+* [x] stable outgoing idempotency key
+* [x] retry temporary failures
+* [x] circuit breaker
 
 Test scenario:
 

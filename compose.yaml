@@ -29,19 +29,41 @@ services:
       SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-}
       DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-}
       DB_HEALTH_TIMEOUT: ${DB_HEALTH_TIMEOUT:-}
+      ACCOUNTING_URL: ${ACCOUNTING_URL:-http://host.docker.internal:8081/transaction}
+      ACCOUNTING_TIMEOUT: ${ACCOUNTING_TIMEOUT:-}
+      ACCOUNTING_FAILURE_THRESHOLD: ${ACCOUNTING_FAILURE_THRESHOLD:-}
+      ACCOUNTING_CIRCUIT_OPEN: ${ACCOUNTING_CIRCUIT_OPEN:-}
+      OUTBOX_CONCURRENCY: ${OUTBOX_CONCURRENCY:-}
+      OUTBOX_POLL_INTERVAL: ${OUTBOX_POLL_INTERVAL:-}
+      OUTBOX_LEASE_DURATION: ${OUTBOX_LEASE_DURATION:-}
+      OUTBOX_DELIVERY_TIMEOUT: ${OUTBOX_DELIVERY_TIMEOUT:-}
+      OUTBOX_BASE_RETRY_DELAY: ${OUTBOX_BASE_RETRY_DELAY:-}
+      OUTBOX_MAX_RETRY_DELAY: ${OUTBOX_MAX_RETRY_DELAY:-}
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
+  accounting:
+    build: .
+    entrypoint: ["mock-accounting"]
+    environment:
+      MOCK_ACCOUNTING_FAILURES: ${MOCK_ACCOUNTING_FAILURES:-2}
+    ports:
+      - "${ACCOUNTING_PORT:-8081}:8081"
+
   api:
     build: .
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      ACCOUNTING_URL: http://accounting:8081/transaction
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      accounting:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 5s

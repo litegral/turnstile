@@ -31,12 +31,18 @@ type Database interface {
 
 // Store owns durable outbox state transitions.
 type Store struct {
-	db Database
+	db         Database
+	eventTypes []string
 }
 
 // NewStore creates an outbox store.
 func NewStore(db Database) *Store {
 	return &Store{db: db}
+}
+
+// NewStoreForTypes scopes claims to destination event types.
+func NewStoreForTypes(db Database, eventTypes ...string) *Store {
+	return &Store{db: db, eventTypes: eventTypes}
 }
 
 // Claim leases up to limit ready events without waiting for other claimers.
@@ -58,6 +64,7 @@ func (s *Store) Claim(ctx context.Context, limit int, lease time.Duration) ([]Ev
 				WHERE status = 'PENDING'
 					AND available_at <= now()
 					AND (locked_until IS NULL OR locked_until <= now())
+					AND (COALESCE(cardinality($4::text[]), 0) = 0 OR event_type = ANY($4))
 				ORDER BY available_at, id
 				LIMIT $1
 				FOR UPDATE SKIP LOCKED
@@ -68,7 +75,7 @@ func (s *Store) Claim(ctx context.Context, limit int, lease time.Duration) ([]Ev
 			FROM candidates
 			WHERE event.id = candidates.id
 			RETURNING event.id, event.event_type, event.transaction_id, event.payload,
-				event.attempt_count, event.lock_token`, limit, lease.Seconds(), token)
+				event.attempt_count, event.lock_token`, limit, lease.Seconds(), token, s.eventTypes)
 		if err != nil {
 			return fmt.Errorf("claim outbox events: %w", err)
 		}
@@ -105,21 +112,21 @@ func (s *Store) Complete(ctx context.Context, event Event) (bool, error) {
 	return tag.RowsAffected() == 1, nil
 }
 
-// Fail records a delivery failure and either schedules retry or exposes terminal failure.
-func (s *Store) Fail(ctx context.Context, event Event, cause error, retryAfter time.Duration, maxAttempts int) (bool, error) {
-	if cause == nil || retryAfter <= 0 || maxAttempts < 1 {
-		return false, errors.New("outbox failure cause, retry delay, and maximum attempts are required")
+// Fail records a failure, schedules retry, or exposes a permanent failure.
+func (s *Store) Fail(ctx context.Context, event Event, cause error, retryAfter time.Duration, disposition FailureDisposition) (bool, error) {
+	if cause == nil || retryAfter <= 0 || disposition < FailureTemporary || disposition > FailurePostponed {
+		return false, errors.New("outbox failure cause, retry delay, and disposition are required")
 	}
 	tag, err := s.db.Exec(ctx, `
 		UPDATE turnstile.outbox_events
-		SET attempt_count = attempt_count + 1,
-			status = CASE WHEN attempt_count + 1 >= $4 THEN 'FAILED' ELSE 'PENDING' END,
+		SET attempt_count = attempt_count + CASE WHEN $4 = 2 THEN 0 ELSE 1 END,
+			status = CASE WHEN $4 = 1 THEN 'FAILED' ELSE 'PENDING' END,
 			available_at = now() + make_interval(secs => $3),
 			locked_until = NULL,
 			lock_token = NULL,
 			last_error = left($2, 2000)
 		WHERE id = $1 AND status = 'PENDING' AND lock_token = $5`,
-		event.ID, cause.Error(), retryAfter.Seconds(), maxAttempts, event.LockToken)
+		event.ID, cause.Error(), retryAfter.Seconds(), disposition, event.LockToken)
 	if err != nil {
 		return false, fmt.Errorf("fail outbox event: %w", err)
 	}

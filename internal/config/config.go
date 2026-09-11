@@ -11,9 +11,11 @@ import (
 )
 
 type Config struct {
-	HTTP     HTTP
-	Database Database
-	LogLevel slog.Level
+	HTTP       HTTP
+	Database   Database
+	Accounting Accounting
+	Outbox     Outbox
+	LogLevel   slog.Level
 }
 
 type HTTP struct {
@@ -31,6 +33,22 @@ type Database struct {
 	MinConnections int32
 	ConnectTimeout time.Duration
 	HealthTimeout  time.Duration
+}
+
+type Accounting struct {
+	URL              string
+	Timeout          time.Duration
+	FailureThreshold int
+	CircuitOpen      time.Duration
+}
+
+type Outbox struct {
+	Concurrency       int
+	PollInterval      time.Duration
+	LeaseDuration     time.Duration
+	DeliveryTimeout   time.Duration
+	BaseRetryDelay    time.Duration
+	MaximumRetryDelay time.Duration
 }
 
 func Load() (Config, error) {
@@ -70,7 +88,42 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-
+	accountingTimeout, err := duration("ACCOUNTING_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	circuitOpen, err := duration("ACCOUNTING_CIRCUIT_OPEN", 30*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	pollInterval, err := duration("OUTBOX_POLL_INTERVAL", 250*time.Millisecond)
+	if err != nil {
+		return Config{}, err
+	}
+	leaseDuration, err := duration("OUTBOX_LEASE_DURATION", 30*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	deliveryTimeout, err := duration("OUTBOX_DELIVERY_TIMEOUT", 6*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	baseRetryDelay, err := duration("OUTBOX_BASE_RETRY_DELAY", time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	maximumRetryDelay, err := duration("OUTBOX_MAX_RETRY_DELAY", time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	accountingFailureThreshold, err := integer("ACCOUNTING_FAILURE_THRESHOLD", 5)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxConcurrency, err := integer("OUTBOX_CONCURRENCY", 4)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
 		HTTP: HTTP{
 			Address:         env("HTTP_ADDR", ":8080"),
@@ -87,6 +140,20 @@ func Load() (Config, error) {
 			ConnectTimeout: connectTimeout,
 			HealthTimeout:  healthTimeout,
 		},
+		Accounting: Accounting{
+			URL:              env("ACCOUNTING_URL", "http://localhost:8081/transaction"),
+			Timeout:          accountingTimeout,
+			FailureThreshold: int(accountingFailureThreshold),
+			CircuitOpen:      circuitOpen,
+		},
+		Outbox: Outbox{
+			Concurrency:       int(outboxConcurrency),
+			PollInterval:      pollInterval,
+			LeaseDuration:     leaseDuration,
+			DeliveryTimeout:   deliveryTimeout,
+			BaseRetryDelay:    baseRetryDelay,
+			MaximumRetryDelay: maximumRetryDelay,
+		},
 	}
 
 	if cfg.Database.URL == "" {
@@ -97,6 +164,15 @@ func Load() (Config, error) {
 	}
 	if cfg.HTTP.BookingTimeout >= cfg.HTTP.WriteTimeout {
 		return Config{}, errors.New("BOOKING_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
+	}
+	if cfg.Accounting.Timeout >= cfg.Outbox.DeliveryTimeout || cfg.Outbox.DeliveryTimeout >= cfg.Outbox.LeaseDuration {
+		return Config{}, errors.New("ACCOUNTING_TIMEOUT must be shorter than OUTBOX_DELIVERY_TIMEOUT, which must be shorter than OUTBOX_LEASE_DURATION")
+	}
+	if cfg.Accounting.FailureThreshold < 1 || cfg.Outbox.Concurrency < 1 {
+		return Config{}, errors.New("accounting and outbox counts must be positive")
+	}
+	if cfg.Outbox.BaseRetryDelay > cfg.Outbox.MaximumRetryDelay {
+		return Config{}, errors.New("OUTBOX_BASE_RETRY_DELAY must not exceed OUTBOX_MAX_RETRY_DELAY")
 	}
 
 	level := strings.ToLower(env("LOG_LEVEL", "info"))

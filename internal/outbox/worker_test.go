@@ -18,7 +18,6 @@ func TestNewWorkerValidation(t *testing.T) {
 		DeliveryTimeout:   time.Second,
 		BaseRetryDelay:    time.Second,
 		MaximumRetryDelay: time.Minute,
-		MaxAttempts:       3,
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	tests := []struct {
@@ -26,7 +25,6 @@ func TestNewWorkerValidation(t *testing.T) {
 		change func(*Config)
 	}{
 		{name: "zero concurrency", change: func(c *Config) { c.Concurrency = 0 }},
-		{name: "zero attempts", change: func(c *Config) { c.MaxAttempts = 0 }},
 		{name: "delivery exceeds lease", change: func(c *Config) { c.DeliveryTimeout = c.LeaseDuration }},
 		{name: "base exceeds maximum", change: func(c *Config) { c.BaseRetryDelay = 2 * c.MaximumRetryDelay }},
 	}
@@ -92,6 +90,32 @@ func TestWorkerCancellationLeavesLeaseForRecovery(t *testing.T) {
 	}
 }
 
+func TestWorkerFailureDisposition(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		err  error
+		want FailureDisposition
+	}{
+		{name: "temporary", err: errors.New("unavailable"), want: FailureTemporary},
+		{name: "permanent", err: Permanent(errors.New("invalid payload")), want: FailurePermanent},
+		{name: "postponed", err: Postpone(errors.New("circuit open")), want: FailurePostponed},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := &stubStore{events: []Event{{ID: 7, AttemptCount: 2, LockToken: "claim"}}}
+			worker, err := NewWorker(store, HandlerFunc(func(context.Context, Event) error { return test.err }), validWorkerConfig(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := worker.processOne(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if store.disposition != test.want {
+				t.Fatalf("disposition = %d, want %d", store.disposition, test.want)
+			}
+		})
+	}
+}
+
 func TestRetryDelay(t *testing.T) {
 	for _, tt := range []struct {
 		attempt int
@@ -122,14 +146,14 @@ func validWorkerConfig() Config {
 		DeliveryTimeout:   500 * time.Millisecond,
 		BaseRetryDelay:    time.Second,
 		MaximumRetryDelay: time.Minute,
-		MaxAttempts:       3,
 	}
 }
 
 type stubStore struct {
-	events    []Event
-	completed int
-	failed    int
+	events      []Event
+	completed   int
+	failed      int
+	disposition FailureDisposition
 }
 
 func (s *stubStore) Claim(context.Context, int, time.Duration) ([]Event, error) {
@@ -141,7 +165,8 @@ func (s *stubStore) Complete(context.Context, Event) (bool, error) {
 	return true, nil
 }
 
-func (s *stubStore) Fail(context.Context, Event, error, time.Duration, int) (bool, error) {
+func (s *stubStore) Fail(_ context.Context, _ Event, _ error, _ time.Duration, disposition FailureDisposition) (bool, error) {
 	s.failed++
+	s.disposition = disposition
 	return true, nil
 }
