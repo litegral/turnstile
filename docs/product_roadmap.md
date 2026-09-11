@@ -244,10 +244,10 @@ version
 
 Implement:
 
-* [ ] monotonically increasing inventory version
-* [ ] version included in availability event
-* [ ] destination stores latest version
-* [ ] update only when incoming version is newer
+* [x] monotonically increasing inventory version
+* [x] version included in availability event
+* [x] destination stores latest version
+* [x] update only when incoming version is newer
 
 Acceptance test:
 
@@ -265,47 +265,30 @@ version = 12
 
 ---
 
-## Phase 8 - Observability & Validation
+## Phase 8 - Validation Evidence
 
-Turnstile must provide measurable evidence that the proposed reliability and scalability mechanisms work correctly.
+Turnstile must provide measurable, reproducible evidence that the proposed reliability and scalability mechanisms work correctly.
 
-### Monitoring
-
-Use:
-
-* Prometheus for metric collection
-* Grafana for visualization
-* k6 for load generation
-
-Expose application metrics through:
-
-```text
-GET /metrics
-```
-
-Monitor at minimum:
-
-* HTTP throughput
-* HTTP success/error rate
-* request latency (p50/p95/p99)
-* active database connections
-* booking success and sold-out count
-* pending/retried outbox events
-* accounting delivery success/failure
-* duplicate webhook detection
-* stale synchronization events
-
-### Validation
+Use existing automated tests, k6 output, and PostgreSQL reconciliation queries. Capture concise command output and screenshots for the final technical report.
 
 Each assessment challenge must have reproducible validation:
 
-* Race Condition → concurrent buyers cannot oversell inventory.
-* High Traffic → process more than 10,000 requests within one minute while monitoring throughput and latency.
-* External API → demonstrate failed delivery followed by retry and eventual success.
-* Duplicate Request → concurrent duplicate webhooks result in only one payment record.
-* Data Synchronization → an older version cannot overwrite a newer state.
+* Race Condition: concurrent buyers cannot oversell inventory.
+* High Traffic: process more than 10,000 requests within one minute and reconcile successful responses with committed transactions.
+* External API: demonstrate failed delivery followed by retry and eventual success.
+* Duplicate Request: concurrent duplicate webhooks result in only one payment record.
+* Data Synchronization: an older version cannot overwrite a newer state.
 
-Relevant automated test output, Grafana dashboards, and database results should be captured as evidence for the final technical report.
+Required evidence:
+
+* commands needed to reproduce each scenario;
+* automated test or k6 output;
+* relevant PostgreSQL results;
+* numeric outcomes, not screenshots alone.
+
+### Optional Monitoring
+
+Prometheus metrics, Grafana dashboards, and `GET /metrics` are stretch goals. Add them only if time remains after required implementation, validation, diagrams, and documentation are complete.
 
 
 # Phase 9 - Documentation & Final Validation
@@ -348,8 +331,8 @@ Turnstile is ready for submission when:
 * [ ] worker crash recovery exists;
 * [ ] accounting integration uses idempotency and circuit breaker;
 * [x] duplicate webhooks cannot duplicate payments;
-* [ ] availability uses monotonic versioning;
-* [ ] stale updates cannot overwrite newer state;
+* [x] availability uses monotonic versioning;
+* [x] stale updates cannot overwrite newer state;
 * [ ] concurrency scenarios are integration tested;
 * [ ] 10,000+ request load test is reproducible;
 * [ ] Kubernetes manifests exist;

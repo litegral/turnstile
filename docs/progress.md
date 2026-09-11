@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] Implement Phase 7 availability synchronization and destination handler
+- [ ] Capture Phase 8 reproducible validation evidence and report screenshots
 
 ## Completed
 
@@ -45,10 +45,15 @@
 - [x] PostgreSQL uniqueness on `(provider, event_id)` and `(provider, payment_id)`
 - [x] Successful `2xx` replay for exact duplicates and conflict rejection for reused identifiers
 - [x] Concurrent duplicate webhook acceptance test proving one receipt and one payment
+- [x] Phase 7 availability synchronization
+- [x] Monotonic inventory version included in every durable availability event
+- [x] Destination projection guarded by atomic newer-version-only PostgreSQL upsert
+- [x] Dedicated availability outbox worker with stale and duplicate delivery no-ops
+- [x] Out-of-order and concurrent synchronization acceptance tests
 
 ## Remaining
 
-- [ ] Phases 7-9 from `product_roadmap.md`
+- [ ] Phases 8-9 from `product_roadmap.md`
 
 ## Notes
 
@@ -59,7 +64,8 @@
 - Booking, inventory change, and both outbox events commit atomically. External calls remain outside the transaction.
 - Source-of-truth assessment is `docs/technical_assessment.pdf`.
 - Outbox delivery is at-least-once; handlers must use immutable outbox event IDs as idempotency keys.
-- Accounting worker is active; availability events remain pending until Phase 7 provides their real destination handler.
+- Accounting and availability workers independently claim only their destination event types.
+- Availability destination applies `EXCLUDED.version > stored.version` atomically; stale and duplicate deliveries complete as successful no-ops.
 - Expired leases recover crashed work; claim tokens prevent stale workers from completing or failing reclaimed events.
 - Terminal failures remain queryable with attempt count and last error for operational visibility.
 - Accounting retries network errors, HTTP 408/425/429, and 5xx indefinitely with bounded backoff; other non-2xx responses become visible terminal failures.

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/litegral/turnstile/internal/accounting"
+	"github.com/litegral/turnstile/internal/availability"
 	"github.com/litegral/turnstile/internal/booking"
 	"github.com/litegral/turnstile/internal/config"
 	"github.com/litegral/turnstile/internal/database"
@@ -32,30 +33,49 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("create accounting client: %w", err)
 	}
-	worker, err := outbox.NewWorker(
+	workerConfig := outbox.Config{
+		Concurrency:       cfg.Outbox.Concurrency,
+		PollInterval:      cfg.Outbox.PollInterval,
+		LeaseDuration:     cfg.Outbox.LeaseDuration,
+		DeliveryTimeout:   cfg.Outbox.DeliveryTimeout,
+		BaseRetryDelay:    cfg.Outbox.BaseRetryDelay,
+		MaximumRetryDelay: cfg.Outbox.MaximumRetryDelay,
+	}
+	accountingWorker, err := outbox.NewWorker(
 		outbox.NewStoreForTypes(pool, accounting.EventType),
 		accountingClient,
-		outbox.Config{
-			Concurrency:       cfg.Outbox.Concurrency,
-			PollInterval:      cfg.Outbox.PollInterval,
-			LeaseDuration:     cfg.Outbox.LeaseDuration,
-			DeliveryTimeout:   cfg.Outbox.DeliveryTimeout,
-			BaseRetryDelay:    cfg.Outbox.BaseRetryDelay,
-			MaximumRetryDelay: cfg.Outbox.MaximumRetryDelay,
-		},
+		workerConfig,
 		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("create accounting outbox worker: %w", err)
 	}
-	workerCtx, stopWorker := context.WithCancel(ctx)
-	workerDone := make(chan struct{})
+	availabilityHandler, err := availability.NewHandler(pool)
+	if err != nil {
+		return fmt.Errorf("create availability handler: %w", err)
+	}
+	availabilityWorker, err := outbox.NewWorker(
+		outbox.NewStoreForTypes(pool, availability.EventType),
+		availabilityHandler,
+		workerConfig,
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("create availability outbox worker: %w", err)
+	}
+	workerCtx, stopWorkers := context.WithCancel(ctx)
+	workerDone := make(chan struct{}, 2)
 	go func() {
-		defer close(workerDone)
-		worker.Run(workerCtx)
+		accountingWorker.Run(workerCtx)
+		workerDone <- struct{}{}
+	}()
+	go func() {
+		availabilityWorker.Run(workerCtx)
+		workerDone <- struct{}{}
 	}()
 	defer func() {
-		stopWorker()
+		stopWorkers()
+		<-workerDone
 		<-workerDone
 	}()
 
