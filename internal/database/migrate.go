@@ -24,7 +24,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, files fs.FS) error {
 	}
 	defer func() { _, _ = conn.Exec(context.Background(), "SELECT pg_advisory_unlock($1)", migrationLockID) }()
 
-	if _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+	if _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS public.schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
 		return fmt.Errorf("create migration table: %w", err)
 	}
 
@@ -39,7 +39,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, files fs.FS) error {
 			continue
 		}
 		var applied bool
-		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)", entry.Name()).Scan(&applied); err != nil {
+		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM public.schema_migrations WHERE version = $1)", entry.Name()).Scan(&applied); err != nil {
 			return fmt.Errorf("check migration %s: %w", entry.Name(), err)
 		}
 		if applied {
@@ -57,7 +57,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, files fs.FS) error {
 			_ = tx.Rollback(ctx)
 			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
-		if _, err := tx.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", entry.Name()); err != nil {
+		if _, err := tx.Exec(ctx, "INSERT INTO public.schema_migrations (version) VALUES ($1)", entry.Name()); err != nil {
 			_ = tx.Rollback(ctx)
 			return fmt.Errorf("record migration %s: %w", entry.Name(), err)
 		}

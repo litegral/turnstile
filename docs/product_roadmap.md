@@ -149,15 +149,15 @@ Verify successful responses match committed transactions.
 
 Implement:
 
-* [ ] `outbox_events`
-* [ ] durable event creation inside booking transaction
-* [ ] background worker
-* [ ] `FOR UPDATE SKIP LOCKED`
-* [ ] processing lease / `locked_until`
-* [ ] worker crash recovery
-* [ ] exponential backoff
-* [ ] jitter
-* [ ] failed event visibility
+* [x] `outbox_events`
+* [x] durable event creation inside booking transaction
+* [x] background worker
+* [x] `FOR UPDATE SKIP LOCKED`
+* [x] processing lease / `locked_until`
+* [x] worker crash recovery
+* [x] exponential backoff
+* [x] jitter
+* [x] failed event visibility
 
 Required events:
 
