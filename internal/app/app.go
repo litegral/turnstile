@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/litegral/turnstile/internal/booking"
 	"github.com/litegral/turnstile/internal/config"
 	"github.com/litegral/turnstile/internal/database"
 	"github.com/litegral/turnstile/internal/httpapi"
@@ -19,7 +20,8 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	server := httpapi.NewServer(cfg.HTTP, cfg.Database.HealthTimeout, pool, logger)
+	bookings := booking.NewService(pool)
+	server := httpapi.NewServer(cfg.HTTP, cfg.Database.HealthTimeout, pool, bookings, logger)
 	serveErr := make(chan error, 1)
 	go func() {
 		logger.Info("server listening", "address", cfg.HTTP.Address)

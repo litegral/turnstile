@@ -86,13 +86,13 @@ Implement the core purchase flow.
 
 Requirements:
 
-* [ ] ticket inventory table
-* [ ] transactions table
-* [ ] atomic conditional inventory update
-* [ ] PostgreSQL transaction boundary
-* [ ] row-level concurrency safety
-* [ ] sold-out handling
-* [ ] client `Idempotency-Key`
+* [x] ticket inventory table
+* [x] transactions table
+* [x] atomic conditional inventory update
+* [x] PostgreSQL transaction boundary
+* [x] row-level concurrency safety
+* [x] sold-out handling
+* [x] client `Idempotency-Key`
 
 The booking transaction should atomically:
 
