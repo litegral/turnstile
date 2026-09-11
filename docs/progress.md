@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] Complete Phase 9 README, diagrams, and final report screenshots
+- [ ] Complete Phase 9 README and final report screenshots
 
 ## Completed
 
@@ -55,6 +55,7 @@
 - [x] Numeric evidence for race, accounting retry, duplicate webhook, and stale availability scenarios
 - [x] Cross-platform validation runners for Windows, Linux, and macOS
 - [x] Fresh 10,001-request k6 run reconciled against committed PostgreSQL state in 39.663 seconds
+- [x] Final technical report with all five scenario analyses, trade-offs, Mermaid diagrams, code references, and tester instructions
 
 ## Remaining
 

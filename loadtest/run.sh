@@ -10,6 +10,7 @@ KEY_PREFIX="load-${RUN_ID}-"
 RESULTS_DIR="${SCRIPT_DIR}/results"
 COUNTS_PATH="${RESULTS_DIR}/counts.txt"
 SUMMARY_PATH="${RESULTS_DIR}/summary.json"
+EVIDENCE_PATH="${RESULTS_DIR}/evidence.txt"
 
 if ! [[ "$REQUEST_COUNT" =~ ^[0-9]+$ ]] || (( REQUEST_COUNT < 10001 || REQUEST_COUNT > 1000000 )); then
     echo "REQUEST_COUNT must be between 10001 and 1000000" >&2
@@ -27,7 +28,7 @@ export API_PORT=0
 export LOG_LEVEL=warn
 
 mkdir -p "$RESULTS_DIR"
-rm -f "$COUNTS_PATH" "$SUMMARY_PATH"
+rm -f "$COUNTS_PATH" "$SUMMARY_PATH" "$EVIDENCE_PATH"
 
 cleanup() {
     echo "Cleaning up load-test containers and database"
@@ -94,3 +95,6 @@ if [[ "$PASSED" != true ]]; then
     echo "High-traffic validation failed" >&2
     exit 1
 fi
+printf 'requests=%s created=%s elapsed_seconds=%.3f database=%s' \
+    "$HTTP_REQUESTS" "$HTTP_SUCCESSES" "$(awk "BEGIN { print ${ELAPSED_MILLISECONDS} / 1000 }")" "$VERIFICATION" \
+    > "$EVIDENCE_PATH"

@@ -32,10 +32,15 @@ Successful full run exits with code `0` and ends with an explicit assessment sum
 ```text
 Assessment scenario summary
   1. Race Condition:             PASSED
+     buyers=32 succeeded=1 sold_out=31 available=0 transactions=1 outbox_events=2
   2. High Traffic Processing:    PASSED
+     requests=10001 created=10001 elapsed_seconds=39.663 database=0|10001|10001|10001|10001|20002|10001|10001|t
   3. External API Integration:   PASSED
+     http_requests=3 failed_requests=2 successful_requests=1 recorded_attempts=2 status=COMPLETED stable_idempotency_key=true committed_transactions=1
   4. Duplicate Request:          PASSED
+     concurrent_requests=16 webhook_events=1 transaction_payments=1
   5. Data Synchronization:       PASSED
+     delivered_versions=12,11 final_quantity=2 final_version=12
 
 ALL ASSESSMENT SCENARIOS PASSED
 All temporary Docker resources were removed.

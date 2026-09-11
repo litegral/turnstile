@@ -13,6 +13,7 @@ $keyPrefix = "load-$runID-"
 $resultsDirectory = Join-Path $PSScriptRoot "results"
 $countsPath = Join-Path $resultsDirectory "counts.txt"
 $summaryPath = Join-Path $resultsDirectory "summary.json"
+$evidencePath = Join-Path $resultsDirectory "evidence.txt"
 
 $env:POSTGRES_DB = "turnstile"
 $env:POSTGRES_USER = "turnstile"
@@ -21,7 +22,7 @@ $env:API_PORT = "0"
 $env:LOG_LEVEL = "warn"
 
 New-Item -ItemType Directory -Force -Path $resultsDirectory | Out-Null
-Remove-Item -LiteralPath $countsPath, $summaryPath -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $countsPath, $summaryPath, $evidencePath -ErrorAction SilentlyContinue
 
 try {
     Write-Host "[1/4] Starting full backend stack"
@@ -95,6 +96,7 @@ try {
     if (-not $passed) {
         throw "High-traffic validation failed"
     }
+    "requests=$httpRequests created=$httpSuccesses elapsed_seconds=$([math]::Round($elapsedMilliseconds / 1000, 3)) database=$verification" | Set-Content -NoNewline -LiteralPath $evidencePath
 }
 finally {
     Write-Host "Cleaning up load-test containers and database"
