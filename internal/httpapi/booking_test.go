@@ -27,6 +27,13 @@ func (s *bookingStub) Book(_ context.Context, request booking.Request) (booking.
 	return s.result, s.err
 }
 
+type waitingBookingStub struct{}
+
+func (waitingBookingStub) Book(ctx context.Context, _ booking.Request) (booking.Result, error) {
+	<-ctx.Done()
+	return booking.Result{}, ctx.Err()
+}
+
 func TestBookTickets(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -79,5 +86,19 @@ func TestBookTickets(t *testing.T) {
 				t.Fatalf("response is not JSON: %v", err)
 			}
 		})
+	}
+}
+
+func TestBookTicketsTimesOut(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := NewServer(config.HTTP{BookingTimeout: time.Millisecond}, time.Second, pinger{}, waitingBookingStub{}, logger)
+	request := httptest.NewRequest(http.MethodPost, "/bookings", strings.NewReader(`{"inventory_id":1,"customer_id":"customer-1","quantity":1}`))
+	request.Header.Set("Idempotency-Key", "request-1")
+	response := httptest.NewRecorder()
+
+	server.Handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusServiceUnavailable)
 	}
 }

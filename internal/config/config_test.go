@@ -16,6 +16,7 @@ func TestLoad(t *testing.T) {
 		{name: "invalid integer", key: "DB_MAX_CONNECTIONS", value: "many", wantErr: true},
 		{name: "invalid duration", key: "HTTP_READ_TIMEOUT", value: "soon", wantErr: true},
 		{name: "non-positive duration", key: "DB_HEALTH_TIMEOUT", value: "0s", wantErr: true},
+		{name: "booking timeout exceeds write timeout", key: "BOOKING_TIMEOUT", value: "10s", wantErr: true},
 		{name: "invalid log level", key: "LOG_LEVEL", value: "verbose", wantErr: true},
 	}
 

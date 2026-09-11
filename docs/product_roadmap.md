@@ -120,15 +120,15 @@ many concurrent buyers
 
 # Phase 3 - High Traffic & Scalability
 
-* [ ] stateless API
-* [ ] bounded `pgxpool`
-* [ ] short database transactions
-* [ ] external calls outside booking transaction
-* [ ] multiple application instances supported
-* [ ] Kubernetes Deployment
-* [ ] Kubernetes Service
-* [ ] Horizontal Pod Autoscaler
-* [ ] readiness/liveness probes
+* [x] stateless API
+* [x] bounded `pgxpool`
+* [x] short database transactions
+* [x] external calls outside booking transaction
+* [x] multiple application instances supported
+* [x] Kubernetes Deployment
+* [x] Kubernetes Service
+* [x] Horizontal Pod Autoscaler
+* [x] readiness/liveness probes
 
 Kubernetes handles compute scaling and process recovery.
 

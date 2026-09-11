@@ -28,7 +28,7 @@ func NewServer(cfg config.HTTP, healthTimeout time.Duration, db databasePinger, 
 		}
 		respond(w, http.StatusOK, "ready")
 	})
-	mux.HandleFunc("POST /bookings", bookTickets(bookings, logger))
+	mux.HandleFunc("POST /bookings", bookTickets(bookings, cfg.BookingTimeout, logger))
 
 	return &http.Server{
 		Addr:         cfg.Address,

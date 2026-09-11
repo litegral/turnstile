@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/litegral/turnstile/internal/booking"
 )
@@ -18,7 +19,7 @@ type bookingService interface {
 	Book(context.Context, booking.Request) (booking.Result, error)
 }
 
-func bookTickets(service bookingService, logger *slog.Logger) http.HandlerFunc {
+func bookTickets(service bookingService, timeout time.Duration, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 		if idempotencyKey == "" {
@@ -42,7 +43,9 @@ func bookTickets(service bookingService, logger *slog.Logger) http.HandlerFunc {
 			return
 		}
 
-		result, err := service.Book(r.Context(), booking.Request{
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		result, err := service.Book(ctx, booking.Request{
 			InventoryID:    body.InventoryID,
 			CustomerID:     body.CustomerID,
 			Quantity:       body.Quantity,
@@ -61,6 +64,10 @@ func bookTickets(service bookingService, logger *slog.Logger) http.HandlerFunc {
 			respondError(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, booking.ErrSoldOut), errors.Is(err, booking.ErrIdempotencyConflict):
 			respondError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, context.DeadlineExceeded):
+			respondError(w, http.StatusServiceUnavailable, "booking timed out; retry with the same Idempotency-Key")
+		case errors.Is(err, context.Canceled):
+			return
 		default:
 			logger.ErrorContext(r.Context(), "book tickets", "error", err)
 			respondError(w, http.StatusInternalServerError, "internal server error")
