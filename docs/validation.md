@@ -1,99 +1,137 @@
 # Validation Evidence
 
-Phase 8 evidence comes from PostgreSQL-backed acceptance tests and the k6 load test. Tests print numeric database results; failed assertions return a non-zero exit code.
+Company testers need only Docker Desktop or Docker Engine. Go, PostgreSQL, and k6 run inside containers.
 
-## Complete Validation
+## Run Everything
 
-Prerequisites: Docker Desktop with Docker Compose and PowerShell 7+.
+From repository root on Linux or macOS:
+
+```bash
+bash ./validate.sh
+```
+
+From repository root on Windows PowerShell:
 
 ```powershell
 pwsh ./validate.ps1
 ```
 
-This command creates disposable PostgreSQL environments, runs acceptance tests with the Go race detector, executes 10,001 bookings through the HTTP API, reconciles HTTP successes against committed PostgreSQL rows, then removes its containers and volumes.
+Both commands run same validation flow:
 
-Use this faster command while changing acceptance tests:
+1. Start disposable PostgreSQL.
+2. Run complete Go test suite with race detector.
+3. Run PostgreSQL-backed concurrency and reliability tests.
+4. Remove test database.
+5. Build and start full backend stack: PostgreSQL, migrations, Go API, outbox workers, and mock accounting.
+6. Send 10,001 HTTP booking requests with k6.
+7. Reconcile successful HTTP responses with committed PostgreSQL records.
+8. Remove all temporary containers and volumes.
+
+Successful full run exits with code `0` and ends with an explicit assessment summary:
+
+```text
+Assessment scenario summary
+  1. Race Condition:             PASSED
+  2. High Traffic Processing:    PASSED
+  3. External API Integration:   PASSED
+  4. Duplicate Request:          PASSED
+  5. Data Synchronization:       PASSED
+
+ALL ASSESSMENT SCENARIOS PASSED
+All temporary Docker resources were removed.
+```
+
+Expected duration: about 1-3 minutes after Docker images are cached. First run takes longer because Docker downloads images and builds backend.
+
+## Fast Validation
+
+Skip 10,001-request load test while developing.
+
+Linux or macOS:
+
+```bash
+bash ./validate.sh --skip-load-test
+```
+
+Windows PowerShell:
 
 ```powershell
 pwsh ./validate.ps1 -SkipLoadTest
 ```
 
-## Scenario Evidence
+Fast mode still runs complete Go suite, PostgreSQL integration tests, and race detector. It does not start full API stack. Summary reports `High Traffic Processing: SKIPPED` and never claims all assessment scenarios passed.
 
-### Race Condition
+## Load Test Only
 
-Test: `TestConcurrentBookingDoesNotOversell`
+Linux or macOS:
 
-Expected numeric evidence:
-
-```text
-buyers=32 succeeded=1 sold_out=31 available=0 transactions=1 outbox_events=2
+```bash
+bash ./loadtest/run.sh
 ```
 
-PostgreSQL values come from `ticket_inventory`, `transactions`, and `outbox_events` after all buyers start concurrently.
+Optional workload configuration:
 
-### High Traffic
+```bash
+REQUEST_COUNT=20000 VUS=300 bash ./loadtest/run.sh
+```
 
-Command:
+Windows PowerShell:
 
 ```powershell
 pwsh ./loadtest/run.ps1 -RequestCount 10001 -VUs 200
 ```
 
-Pass criteria:
+Load test succeeds only when all requests return created responses within 60 seconds and PostgreSQL reconciliation passes.
+
+## Evidence
+
+Race condition:
 
 ```text
-Requests=10001
-CreatedResponses=10001
-ElapsedSeconds<60
-DatabaseVerification=0|10001|10001|10001|10001|20002|10001|10001|t
-Passed=True
+buyers=32 succeeded=1 sold_out=31 available=0 transactions=1 outbox_events=2
 ```
 
-`DatabaseVerification` fields are remaining inventory, inventory version, transaction count, booked quantity, completed idempotency requests, total outbox events, accounting events, availability events, and combined reconciliation result.
-
-Recorded validation on PostgreSQL 17 and k6 1.3.0 on September 11, 2026:
-
-```text
-Requests=10001
-CreatedResponses=10001
-ElapsedSeconds=40.920
-DatabaseVerification=0|10001|10001|10001|10001|20002|10001|10001|t
-Passed=True
-```
-
-### External API
-
-Test: `TestBookingEventuallyReachesAccounting`
-
-Expected numeric evidence:
+Accounting retry:
 
 ```text
 http_requests=3 failed_requests=2 successful_requests=1 recorded_attempts=2 status=COMPLETED stable_idempotency_key=true committed_transactions=1
 ```
 
-Mock destination returns HTTP 500 twice, then HTTP 200. PostgreSQL outbox status and attempt count prove durable retry and eventual completion.
-
-### Duplicate Request
-
-Test: `TestConcurrentDuplicateWebhookCreatesOnePayment`
-
-Expected numeric evidence:
+Duplicate webhook:
 
 ```text
 concurrent_requests=16 webhook_events=1 transaction_payments=1
 ```
 
-PostgreSQL unique constraints remain final concurrency guard.
-
-### Data Synchronization
-
-Test: `TestOutOfOrderAvailabilityKeepsNewestVersion`
-
-Expected numeric evidence:
+Out-of-order availability:
 
 ```text
 delivered_versions=12,11 final_quantity=2 final_version=12
 ```
 
-PostgreSQL destination receives version 12 before version 11. Newer-version-only upsert prevents stale overwrite.
+High traffic:
+
+```text
+Requests:              10001
+Created responses:     10001
+Elapsed seconds:       39.663
+Database verification: 0|10001|10001|10001|10001|20002|10001|10001|t
+Passed:                True
+```
+
+Database verification fields represent remaining inventory, inventory version, transaction count, booked quantity, completed idempotency requests, total outbox events, accounting events, availability events, and final pass result.
+
+Recorded on PostgreSQL 17 and k6 1.3.0 on September 11, 2026.
+
+## Troubleshooting
+
+Confirm Docker works:
+
+```bash
+docker info
+docker compose version
+```
+
+Scripts are invoked through `bash`, so executable file permissions are not required.
+
+A failed test returns non-zero exit code and prints failed stage. Cleanup still runs. Detailed k6 result remains in `loadtest/results/summary.json`.

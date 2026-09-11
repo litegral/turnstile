@@ -53,7 +53,8 @@
 - [x] Phase 8 reproducible validation evidence
 - [x] One-command PostgreSQL acceptance validation with Go race detector
 - [x] Numeric evidence for race, accounting retry, duplicate webhook, and stale availability scenarios
-- [x] Fresh 10,001-request k6 run reconciled against committed PostgreSQL state in 40.920 seconds
+- [x] Cross-platform validation runners for Windows, Linux, and macOS
+- [x] Fresh 10,001-request k6 run reconciled against committed PostgreSQL state in 39.663 seconds
 
 ## Remaining
 
@@ -78,5 +79,5 @@
 - Reused provider event or payment identifiers with different transaction data return conflict instead of silently accepting inconsistent state.
 - Migration metadata uses `public.schema_migrations` to prevent search-path changes from replaying migrations.
 - HPA permits 2-5 API replicas; 10 connections per replica caps application database connections at 50.
-- Phase 8 validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Fresh result: 10,001 created responses in 40.920 seconds; reconciliation `0|10001|10001|10001|10001|20002|10001|10001|t`.
-- `validate.ps1` runs isolated PostgreSQL acceptance tests sequentially because integration packages truncate shared test tables.
+- Phase 8 validation used one hot inventory row, 200 VUs, PostgreSQL 17, and k6 1.3.0. Fresh cross-platform result: 10,001 created responses in 39.663 seconds; reconciliation `0|10001|10001|10001|10001|20002|10001|10001|t`.
+- Validation runners execute integration packages sequentially because they truncate shared test tables.

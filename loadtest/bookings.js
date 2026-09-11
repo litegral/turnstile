@@ -20,7 +20,7 @@ export const options = {
       executor: "shared-iterations",
       vus,
       iterations: requestCount,
-      maxDuration: "55s",
+      maxDuration: "59s",
       gracefulStop: "0s",
     },
   },
@@ -69,8 +69,12 @@ export default function () {
 }
 
 export function handleSummary(data) {
+  const requests = data.metrics.http_reqs?.values?.count || 0;
+  const createdResponses = data.metrics.booking_created?.values?.count || 0;
+  const elapsedMilliseconds = data.state.testRunDurationMs;
   return {
-    stdout: `requests=${data.metrics.http_reqs?.values?.count || 0} created=${data.metrics.booking_created?.values?.count || 0}\n`,
+    stdout: `requests=${requests} created=${createdResponses} elapsed_ms=${elapsedMilliseconds}\n`,
+    "/work/results/counts.txt": `${requests}|${createdResponses}|${elapsedMilliseconds}\n`,
     "/work/results/summary.json": JSON.stringify(data, null, 2),
   };
 }
